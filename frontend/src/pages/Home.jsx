@@ -2,13 +2,74 @@ import { Link } from 'react-router-dom'
 
 export default function Home() {
   return (
-    <div className='max-w-3xl mx-auto text-center py-16'>
-      <h1 className='text-4xl font-bold text-gray-900 mb-4'>ProjectMate</h1>
-      <p className='text-gray-600 mb-8'>A minimal project & task tracker for students. Create projects, invite members, and manage tasks with a simple kanban.</p>
+    <div className='min-h-[80vh] flex items-center justify-center'>
+      {/* Hero Section */}
+      <div className='max-w-4xl mx-auto text-center px-4'>
+        {/* Logo/Brand with gradient */}
+        <div className='mb-8'>
+          <h1 className='text-6xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-800 bg-clip-text text-transparent mb-4'>
+            ProjectMate
+          </h1>
+          <div className='w-24 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 mx-auto rounded-full'></div>
+        </div>
 
-      <div className='flex justify-center gap-4'>
-        <Link to='/register' className='px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'>Get Started</Link>
-        <Link to='/login' className='px-6 py-2 border border-indigo-600 text-indigo-600 rounded hover:bg-indigo-50'>Sign in</Link>
+        {/* Subtitle */}
+        <p className='text-xl text-gray-600 mb-4 leading-relaxed'>
+          A minimal project & task tracker for students
+        </p>
+        <p className='text-lg text-gray-500 mb-12 max-w-2xl mx-auto'>
+          Create projects, invite team members, and manage tasks with a simple kanban board. 
+          Keep your academic projects organized and on track.
+        </p>
+
+        {/* Feature highlights */}
+        <div className='grid grid-cols-1 md:grid-cols-3 gap-6 mb-12'>
+          <div className='p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow'>
+            <div className='w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-4'>
+              <svg className='w-6 h-6 text-indigo-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' />
+              </svg>
+            </div>
+            <h3 className='font-semibold text-gray-900 mb-2'>Project Management</h3>
+            <p className='text-sm text-gray-600'>Create and organize multiple projects with detailed descriptions</p>
+          </div>
+
+          <div className='p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow'>
+            <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4'>
+              <svg className='w-6 h-6 text-purple-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' />
+              </svg>
+            </div>
+            <h3 className='font-semibold text-gray-900 mb-2'>Team Collaboration</h3>
+            <p className='text-sm text-gray-600'>Invite team members and assign tasks to keep everyone on track</p>
+          </div>
+
+          <div className='p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow'>
+            <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4'>
+              <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h2a2 2 0 002-2z' />
+              </svg>
+            </div>
+            <h3 className='font-semibold text-gray-900 mb-2'>Kanban Board</h3>
+            <p className='text-sm text-gray-600'>Drag and drop tasks through To-do, In Progress, and Completed</p>
+          </div>
+        </div>
+
+        {/* CTA Buttons */}
+        <div className='flex flex-col sm:flex-row justify-center gap-4'>
+          <Link 
+            to='/register' 
+            className='px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl'
+          >
+            Get Started Free
+          </Link>
+          <Link 
+            to='/login' 
+            className='px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors duration-200'
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
     </div>
   )

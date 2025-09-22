@@ -180,54 +180,101 @@ export default function Dashboard() {
       {!selectedProject ? (
         // Projects List View
         <>
-          <div className='flex items-center justify-between mb-6'>
-            <h2 className='text-2xl font-semibold'>Projects</h2>
-            <button onClick={() => setCreating(true)} className='px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'>
-              + New Project
+          <div className='flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-100'>
+            <div>
+              <h2 className='text-3xl font-bold text-gray-900 mb-2'>My Projects</h2>
+              <p className='text-gray-600'>Manage and organize your academic projects</p>
+            </div>
+            <button 
+              onClick={() => setCreating(true)} 
+              className='mt-4 sm:mt-0 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center space-x-2'
+            >
+              <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M12 6v6m0 0v6m0-6h6m-6 0H6' />
+              </svg>
+              <span>New Project</span>
             </button>
           </div>
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} onOpen={handleProjectOpen} />
-            ))}
-          </div>
+          {/* Projects Grid */}
+          {projects.length > 0 ? (
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
+              {projects.map((project) => (
+                <ProjectCard key={project.id} project={project} onOpen={handleProjectOpen} />
+              ))}
+            </div>
+          ) : (
+            <div className='text-center py-16'>
+              <div className='w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                <svg className='w-10 h-10 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' />
+                </svg>
+              </div>
+              <h3 className='text-xl font-semibold text-gray-900 mb-2'>No projects yet</h3>
+              <p className='text-gray-600 mb-6'>Create your first project to get started</p>
+              <button 
+                onClick={() => setCreating(true)}
+                className='px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-200'
+              >
+                Create First Project
+              </button>
+            </div>
+          )}
 
           <CreateProjectModal open={creating} onClose={() => setCreating(false)} onCreate={handleCreate} />
         </>
       ) : (
         // Project Detail View
         <>
-          <div className='flex items-center justify-between mb-6'>
-            <div>
-              <button 
-                onClick={() => setSelectedProject(null)} 
-                className='text-indigo-600 hover:text-indigo-800 mb-2'
-              >
-                ← Back to Projects
-              </button>
-              <h2 className='text-2xl font-semibold'>{selectedProject.title}</h2>
-              <p className='text-gray-600'>{selectedProject.description}</p>
-            </div>
-            <div className='space-x-2'>
-              <button 
-                onClick={() => setTab('board')} 
-                className={`px-3 py-1 rounded ${tab==='board'?'bg-indigo-600 text-white':'border hover:bg-gray-50'}`}
-              >
-                Board
-              </button>
-              <button 
-                onClick={() => setTab('members')} 
-                className={`px-3 py-1 rounded ${tab==='members'?'bg-indigo-600 text-white':'border hover:bg-gray-50'}`}
-              >
-                Members
-              </button>
-              <button 
-                onClick={() => setTab('tasks')} 
-                className={`px-3 py-1 rounded ${tab==='tasks'?'bg-indigo-600 text-white':'border hover:bg-gray-50'}`}
-              >
-                All Tasks
-              </button>
+          <div className='bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8'>
+            <button 
+              onClick={() => setSelectedProject(null)} 
+              className='inline-flex items-center text-indigo-600 hover:text-indigo-800 mb-4 font-medium transition-colors duration-200'
+            >
+              <svg className='w-4 h-4 mr-2' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M15 19l-7-7 7-7' />
+              </svg>
+              Back to Projects
+            </button>
+            
+            <div className='flex flex-col lg:flex-row lg:items-center justify-between'>
+              <div className='mb-4 lg:mb-0'>
+                <h2 className='text-3xl font-bold text-gray-900 mb-2'>{selectedProject.title}</h2>
+                <p className='text-gray-600 text-lg'>{selectedProject.description}</p>
+              </div>
+              
+              <div className='flex flex-wrap gap-2'>
+                <button 
+                  onClick={() => setTab('board')} 
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                    tab==='board'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Board
+                </button>
+                <button 
+                  onClick={() => setTab('members')} 
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                    tab==='members'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Members
+                </button>
+                <button 
+                  onClick={() => setTab('tasks')} 
+                  className={`px-4 py-2 rounded-xl font-medium transition-all duration-200 ${
+                    tab==='tasks'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg' 
+                      : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  All Tasks
+                </button>
+              </div>
             </div>
           </div>
 
