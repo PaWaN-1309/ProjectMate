@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import ProjectCard from '../components/ProjectCard'
 import CreateProjectModal from '../components/CreateProjectModal'
-import { listProjects, createProject } from '../api/client'
+import { 
+  listProjects, 
+  createProject, 
+  getProjectTasks, 
+  createTask, 
+  updateTaskStatus,
+  addProjectMember,
+  isLoggedIn,
+  getStoredUser 
+} from '../api/client'
 
 function TaskColumn({ title, tasks, onAddTask, onDrop, columnKey }) {
   const [newTask, setNewTask] = useState('')
@@ -63,18 +73,22 @@ function TaskColumn({ title, tasks, onAddTask, onDrop, columnKey }) {
       <div className='space-y-2'>
         {tasks.map((task) => (
           <div 
-            key={task.id} 
+            key={task._id || task.id} 
             className='p-3 border rounded bg-gray-50 cursor-grab hover:bg-gray-100 hover:shadow-md transition-all active:cursor-grabbing'
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData('taskId', task.id)
+              e.dataTransfer.setData('taskId', task._id || task.id)
               e.dataTransfer.setData('sourceColumn', columnKey)
               e.dataTransfer.effectAllowed = 'move'
             }}
           >
             <div className='font-medium text-sm'>{task.title}</div>
             <div className='text-xs text-gray-500 mt-1'>
-              {task.assignedTo ? `Assigned to: ${task.assignedTo}` : 'Unassigned'}
+              {task.assignedTo ? (
+                typeof task.assignedTo === 'object' 
+                  ? `Assigned to: ${task.assignedTo.name}`
+                  : `Assigned to: ${task.assignedTo}`
+              ) : 'Unassigned'}
             </div>
           </div>
         ))}
@@ -94,35 +108,126 @@ export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState(null)
   const [projects, setProjects] = useState([])
   const [creating, setCreating] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   
-  // Mock task data for selected project
+  // Task management states
   const [tasks, setTasks] = useState({
-    todo: [
-      { id: 't1', title: 'Define project requirements', assignedTo: 'John Doe', createdAt: '2025-09-20', createdBy: 'You' },
-      { id: 't2', title: 'Create wireframes', assignedTo: '', createdAt: '2025-09-21', createdBy: 'You' }
-    ],
-    inprogress: [
-      { id: 't3', title: 'Set up development environment', assignedTo: 'Jane Smith', createdAt: '2025-09-19', createdBy: 'John Doe' }
-    ],
-    completed: [
-      { id: 't4', title: 'Initial project setup', assignedTo: 'You', createdAt: '2025-09-18', createdBy: 'You' }
-    ]
+    todo: [],
+    inprogress: [],
+    completed: []
   })
+  const [tasksLoading, setTasksLoading] = useState(false)
 
-  const [members, setMembers] = useState(['You', 'John Doe', 'Jane Smith'])
+  // Member management states  
+  const [members, setMembers] = useState([])
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  
+  const navigate = useNavigate()
+  const currentUser = getStoredUser()
 
   useEffect(() => {
-    async function load() {
-      const res = await listProjects()
-      setProjects(res)
+    // Check if user is logged in
+    if (!isLoggedIn()) {
+      navigate('/login')
+      return
     }
-    load()
-  }, [])
+    
+    loadProjects()
+  }, [navigate])
+
+  useEffect(() => {
+    if (selectedProject) {
+      loadProjectTasks()
+      loadProjectMembers()
+    }
+  }, [selectedProject])
+
+  async function loadProjects() {
+    try {
+      setLoading(true)
+      const projectsData = await listProjects()
+      setProjects(projectsData)
+      setError('')
+    } catch (err) {
+      setError('Failed to load projects. Please try again.')
+      console.error('Error loading projects:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadProjectTasks() {
+    if (!selectedProject) return
+    
+    try {
+      setTasksLoading(true)
+      const tasksData = await getProjectTasks(selectedProject.id || selectedProject._id)
+      
+      // Organize tasks by status
+      const organizedTasks = {
+        todo: tasksData.filter(task => task.status === 'todo'),
+        inprogress: tasksData.filter(task => task.status === 'inprogress'),
+        completed: tasksData.filter(task => task.status === 'completed')
+      }
+      
+      setTasks(organizedTasks)
+    } catch (err) {
+      console.error('Error loading tasks:', err)
+      // Keep existing tasks on error
+    } finally {
+      setTasksLoading(false)
+    }
+  }
+
+  function loadProjectMembers() {
+    if (!selectedProject) return
+    
+    // Extract members from project data
+    const projectMembers = []
+    
+    // Add owner
+    if (selectedProject.owner) {
+      projectMembers.push({
+        id: selectedProject.owner._id || selectedProject.owner.id,
+        name: selectedProject.owner.name,
+        email: selectedProject.owner.email,
+        role: 'owner'
+      })
+    }
+    
+    // Add other members
+    if (selectedProject.members && Array.isArray(selectedProject.members)) {
+      selectedProject.members.forEach(member => {
+        const memberData = member.user || member
+        projectMembers.push({
+          id: memberData._id || memberData.id,
+          name: memberData.name,
+          email: memberData.email,
+          role: member.role || 'member'
+        })
+      })
+    }
+    
+    setMembers(projectMembers)
+  }
 
   async function handleCreate(payload) {
-    const res = await createProject(payload)
-    if (res?.project) setProjects((p) => [res.project, ...p])
+    try {
+      const res = await createProject(payload)
+      if (res?.ok && res.project) {
+        setProjects(p => [res.project, ...p])
+        return true
+      } else {
+        setError(res?.error || 'Failed to create project')
+        return false
+      }
+    } catch (err) {
+      setError('Failed to create project. Please try again.')
+      return false
+    }
   }
 
   function handleProjectOpen(project) {
@@ -130,31 +235,46 @@ export default function Dashboard() {
     setTab('board')
   }
 
-  function handleAddTask(column, taskTitle) {
-    const newTask = {
-      id: `t${Date.now()}`,
-      title: taskTitle,
-      assignedTo: '',
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: 'You'
+  async function handleAddTask(column, taskTitle) {
+    if (!selectedProject || !taskTitle.trim()) return
+
+    try {
+      const taskData = {
+        title: taskTitle.trim(),
+        description: '',
+        status: column,
+        priority: 'medium'
+      }
+
+      const res = await createTask(selectedProject.id || selectedProject._id, taskData)
+      
+      if (res?.ok && res.task) {
+        setTasks(prev => ({
+          ...prev,
+          [column]: [...prev[column], res.task]
+        }))
+      } else {
+        console.error('Failed to create task:', res?.error)
+      }
+    } catch (err) {
+      console.error('Error creating task:', err)
     }
-    setTasks(prev => ({
-      ...prev,
-      [column]: [...prev[column], newTask]
-    }))
   }
 
-  function handleTaskDrop(taskId, sourceColumn, targetColumn) {
+  async function handleTaskDrop(taskId, sourceColumn, targetColumn) {
+    if (sourceColumn === targetColumn) return
+
+    // Optimistic update
     setTasks(prev => {
-      // Find the task in the source column
-      const taskToMove = prev[sourceColumn].find(task => task.id === taskId)
+      const taskToMove = prev[sourceColumn].find(task => (task.id || task._id) === taskId)
       if (!taskToMove) return prev
 
       // Remove task from source column
-      const newSourceTasks = prev[sourceColumn].filter(task => task.id !== taskId)
+      const newSourceTasks = prev[sourceColumn].filter(task => (task.id || task._id) !== taskId)
       
-      // Add task to target column
-      const newTargetTasks = [...prev[targetColumn], taskToMove]
+      // Add task to target column with updated status
+      const updatedTask = { ...taskToMove, status: targetColumn }
+      const newTargetTasks = [...prev[targetColumn], updatedTask]
 
       return {
         ...prev,
@@ -162,21 +282,75 @@ export default function Dashboard() {
         [targetColumn]: newTargetTasks
       }
     })
+
+    // Update task status in backend
+    try {
+      const res = await updateTaskStatus(taskId, targetColumn)
+      if (!res?.ok) {
+        console.error('Failed to update task status:', res?.error)
+        // Revert on failure
+        loadProjectTasks()
+      }
+    } catch (err) {
+      console.error('Error updating task status:', err)
+      // Revert on failure
+      loadProjectTasks()
+    }
   }
 
-  function handleInviteMember(e) {
+  async function handleInviteMember(e) {
     e.preventDefault()
-    if (!inviteEmail.trim()) return
-    setMembers(prev => [...prev, inviteEmail.trim()])
-    setInviteEmail('')
+    if (!inviteEmail.trim() || !selectedProject) return
+    
+    try {
+      setInviteLoading(true)
+      setError('')
+      setSuccessMessage('')
+      const res = await addProjectMember(selectedProject.id || selectedProject._id, inviteEmail.trim())
+      
+      if (res?.ok) {
+        setInviteEmail('')
+        setSuccessMessage(`${inviteEmail.trim()} added as member!`)
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccessMessage(''), 3000)
+        // Reload project members
+        loadProjectMembers()
+      } else {
+        setError(res?.error || 'Failed to add member')
+      }
+    } catch (err) {
+      setError('Failed to add member. Please try again.')
+    } finally {
+      setInviteLoading(false)
+    }
   }
 
   function getAllTasks() {
     return [...tasks.todo, ...tasks.inprogress, ...tasks.completed]
   }
 
+  if (loading) {
+    return (
+      <div className='flex items-center justify-center min-h-[400px]'>
+        <div className='text-center'>
+          <svg className='animate-spin h-12 w-12 text-indigo-600 mx-auto mb-4' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+            <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
+            <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+          </svg>
+          <p className='text-gray-600'>Loading your projects...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
+      {error && (
+        <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-xl'>
+          <p className='text-red-600 text-sm'>{error}</p>
+        </div>
+      )}
+      
       {!selectedProject ? (
         // Projects List View
         <>
@@ -200,7 +374,7 @@ export default function Dashboard() {
           {projects.length > 0 ? (
             <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} onOpen={handleProjectOpen} />
+                <ProjectCard key={project._id || project.id} project={project} onOpen={handleProjectOpen} />
               ))}
             </div>
           ) : (
@@ -239,7 +413,7 @@ export default function Dashboard() {
             
             <div className='flex flex-col lg:flex-row lg:items-center justify-between'>
               <div className='mb-4 lg:mb-0'>
-                <h2 className='text-3xl font-bold text-gray-900 mb-2'>{selectedProject.title}</h2>
+                <h2 className='text-3xl font-bold text-gray-900 mb-2'>{selectedProject.name || selectedProject.title}</h2>
                 <p className='text-gray-600 text-lg'>{selectedProject.description}</p>
               </div>
               
@@ -280,27 +454,41 @@ export default function Dashboard() {
 
           {tab === 'board' && (
             <div className='flex gap-4'>
-              <TaskColumn 
-                title='To do' 
-                tasks={tasks.todo} 
-                onAddTask={handleAddTask}
-                onDrop={handleTaskDrop}
-                columnKey='todo'
-              />
-              <TaskColumn 
-                title='In progress' 
-                tasks={tasks.inprogress} 
-                onAddTask={handleAddTask}
-                onDrop={handleTaskDrop}
-                columnKey='inprogress'
-              />
-              <TaskColumn 
-                title='Completed' 
-                tasks={tasks.completed} 
-                onAddTask={handleAddTask}
-                onDrop={handleTaskDrop}
-                columnKey='completed'
-              />
+              {tasksLoading ? (
+                <div className='flex-1 flex items-center justify-center py-12'>
+                  <div className='text-center'>
+                    <svg className='animate-spin h-8 w-8 text-indigo-600 mx-auto mb-4' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'>
+                      <circle className='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='4'></circle>
+                      <path className='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+                    </svg>
+                    <p className='text-gray-600'>Loading tasks...</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <TaskColumn 
+                    title='To do' 
+                    tasks={tasks.todo} 
+                    onAddTask={handleAddTask}
+                    onDrop={handleTaskDrop}
+                    columnKey='todo'
+                  />
+                  <TaskColumn 
+                    title='In progress' 
+                    tasks={tasks.inprogress} 
+                    onAddTask={handleAddTask}
+                    onDrop={handleTaskDrop}
+                    columnKey='inprogress'
+                  />
+                  <TaskColumn 
+                    title='Completed' 
+                    tasks={tasks.completed} 
+                    onAddTask={handleAddTask}
+                    onDrop={handleTaskDrop}
+                    columnKey='completed'
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -308,13 +496,46 @@ export default function Dashboard() {
             <div className='bg-white p-6 rounded shadow'>
               <h3 className='font-semibold mb-4'>Project Members</h3>
               
+              {error && (
+                <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-xl'>
+                  <p className='text-red-600 text-sm'>{error}</p>
+                </div>
+              )}
+              
+              {successMessage && (
+                <div className='mb-4 p-4 bg-green-50 border border-green-200 rounded-xl'>
+                  <p className='text-green-600 text-sm'>✓ {successMessage}</p>
+                </div>
+              )}
+              
               <div className='mb-6'>
-                <div className='flex flex-wrap gap-2 mb-4'>
-                  {members.map((member, idx) => (
-                    <span key={idx} className='px-3 py-1 bg-gray-100 rounded-full text-sm'>
-                      {member}
-                    </span>
+                <div className='space-y-2 mb-4'>
+                  {members.map((member) => (
+                    <div key={member.id} className='flex items-center justify-between p-3 bg-gray-50 rounded-lg'>
+                      <div className='flex items-center space-x-3'>
+                        <div className='w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center'>
+                          <span className='text-white text-sm font-medium'>
+                            {member.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div className='font-medium text-sm'>{member.name}</div>
+                          <div className='text-xs text-gray-500'>{member.email}</div>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        member.role === 'owner' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {member.role}
+                      </span>
+                    </div>
                   ))}
+                  
+                  {members.length === 0 && (
+                    <p className='text-gray-500 text-sm'>No members found</p>
+                  )}
                 </div>
               </div>
 
@@ -323,12 +544,17 @@ export default function Dashboard() {
                 <input 
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder='Member email' 
+                  placeholder='Enter member email to add' 
                   className='flex-1 p-2 border rounded' 
                   type='email'
+                  disabled={inviteLoading}
                 />
-                <button type='submit' className='px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700'>
-                  Invite
+                <button 
+                  type='submit' 
+                  disabled={inviteLoading}
+                  className='px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                >
+                  {inviteLoading ? 'Adding...' : 'Add Member'}
                 </button>
               </form>
             </div>
@@ -350,12 +576,16 @@ export default function Dashboard() {
                   </thead>
                   <tbody>
                     {getAllTasks().map((task) => {
-                      let status = 'To do'
-                      if (tasks.inprogress.find(t => t.id === task.id)) status = 'In progress'
-                      if (tasks.completed.find(t => t.id === task.id)) status = 'Completed'
+                      const statusMap = {
+                        'todo': 'To do',
+                        'inprogress': 'In progress', 
+                        'completed': 'Completed'
+                      }
+                      
+                      const status = statusMap[task.status] || 'To do'
                       
                       return (
-                        <tr key={task.id} className='border-b'>
+                        <tr key={task._id || task.id} className='border-b'>
                           <td className='py-2'>{task.title}</td>
                           <td className='py-2'>
                             <span className={`px-2 py-1 rounded-full text-xs ${
@@ -366,9 +596,23 @@ export default function Dashboard() {
                               {status}
                             </span>
                           </td>
-                          <td className='py-2'>{task.createdBy}</td>
-                          <td className='py-2'>{task.createdAt}</td>
-                          <td className='py-2'>{task.assignedTo || '-'}</td>
+                          <td className='py-2'>
+                            {task.createdBy ? (
+                              typeof task.createdBy === 'object' 
+                                ? task.createdBy.name 
+                                : task.createdBy
+                            ) : currentUser?.name || 'Unknown'}
+                          </td>
+                          <td className='py-2'>
+                            {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : '-'}
+                          </td>
+                          <td className='py-2'>
+                            {task.assignedTo ? (
+                              typeof task.assignedTo === 'object' 
+                                ? task.assignedTo.name
+                                : task.assignedTo
+                            ) : '-'}
+                          </td>
                         </tr>
                       )
                     })}

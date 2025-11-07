@@ -8,7 +8,7 @@ export default function ProjectCard({ project, onOpen }) {
       <div className='p-6'>
         <div className='flex items-start justify-between mb-3'>
           <h3 className='font-bold text-lg text-gray-900 group-hover:text-indigo-700 transition-colors duration-200'>
-            {project.title}
+            {project.name || project.title}
           </h3>
           <div className='w-2 h-2 bg-green-400 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200'></div>
         </div>
@@ -23,13 +23,23 @@ export default function ProjectCard({ project, onOpen }) {
             <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' />
             </svg>
-            <span>5 tasks</span>
+            <span>
+              {project.taskStats ? 
+                `${project.taskStats.total} tasks` : 
+                `${project.tasks ? project.tasks.length : 0} tasks`
+              }
+            </span>
           </span>
           <span className='flex items-center space-x-1'>
             <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
               <path strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' d='M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z' />
             </svg>
-            <span>3 members</span>
+            <span>
+              {project.members ? 
+                `${project.members.length + 1} members` : // +1 for owner
+                '1 member'
+              }
+            </span>
           </span>
         </div>
         

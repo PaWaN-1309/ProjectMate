@@ -1,19 +1,21 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { logout, isLoggedIn, getStoredUser } from '../api/client'
 
 export default function NavBar() {
   const [user, setUser] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
+    if (isLoggedIn()) {
+      const userData = getStoredUser()
+      setUser(userData)
     }
-  }, [])
+  }, [location.pathname]) // Re-check on route changes
 
   function handleLogout() {
-    localStorage.removeItem('user')
+    logout()
     setUser(null)
     navigate('/')
   }
