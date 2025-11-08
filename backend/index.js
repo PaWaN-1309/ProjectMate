@@ -1,3 +1,7 @@
+// =======================
+// ProjectMate Backend
+// =======================
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -26,23 +30,49 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 app.use(generalLimiter);
 
-// CORS setup
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-  'http://localhost:3000'
-].filter(Boolean);
+// =======================
+// CORS setup (simple + clean, Classtro-style)
+// =======================
+const allowedBaseDomains = [
+  'project-mate-eight.vercel.app',
+  'www.project-mate-eight.vercel.app',
+  'localhost'
+];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
+// Helper to check if the request origin is allowed
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // Allow requests like Postman / server-to-server
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+
+    // ✅ Allow from known base domains
+    if (allowedBaseDomains.includes(hostname)) return true;
+
+    // ✅ Allow any preview subdomain from Vercel ending with 'vercel.app'
+    if (hostname.endsWith('vercel.app') && hostname.includes('project-mate')) {
+      return true;
     }
-    return callback(new Error('CORS policy: origin not allowed'), false);
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-}));
+
+    return false;
+  } catch (err) {
+    return false;
+  }
+};
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) callback(null, true);
+      else callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  })
+);
+
+// =======================
+// Health + Root routes
+// =======================
 
 // Simple health check (for Render)
 app.get('/api/health', (req, res) => {
@@ -79,9 +109,11 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// Start the server
+// =======================
+// Server startup
+// =======================
 const PORT = process.env.PORT || 5000;
-const HOST = '0.0.0.0'; // important for Render
+const HOST = '0.0.0.0'; // required for Render
 
 app.listen(PORT, HOST, () => {
   console.log(`
