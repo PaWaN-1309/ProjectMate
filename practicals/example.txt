@@ -1,0 +1,4 @@
+Hello, this is line 1.
+This is line 2 written using Node.js streams.
+Streams are efficient for handling large data.
+Final line written successfully.
